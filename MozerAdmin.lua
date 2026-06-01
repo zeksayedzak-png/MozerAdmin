@@ -1,369 +1,352 @@
 --[[
-    MOZER ADMIN V2 - THE MONSTER EDITION
-    Developed for: Delta Executor (Mobile)
-    Features: Advanced Anatomy, Remote Spy, Model Scanner, Item Info
+    █▀▄▀█ █▀▀█ ▀█▀​ █▀▀ █▀▀█ 　 █▀▀█ █▀▀▄ █▀▄▀█ ▀█▀ █▀▀▄
+    █░▀░█ █░░█ ░█░ █▀▀ █▄▄▀ 　 █▄▄█ █░░█ █░▀░█ ░█░ █░░█
+    ▀░░░▀ ▀▀▀▀ ▀▀▀ ▀▀▀ ▀░▀▀ 　 ▀░░▀ ▀▀▀░ ▀░░░▀ ▀▀▀ ▀░░▀
+    V3 - THE ARCHITECT EDITION (ULTIMATE ANATOMY TOOL)
+    Optimized for Delta / Mobile / Extreme Precision
 ]]
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "Mozer_Monster_V2"
-ScreenGui.Parent = game.CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+local MozerHub = {
+    Version = "3.0.0",
+    SelectedObject = nil,
+    SpyActive = false,
+    XrayActive = false,
+    FreezeMap = false,
+    SavedRemotes = {}
+}
 
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
+-- [ الخدمات الأساسية ]
+local UIS = game:GetService("UserInputService")
+local TS = game:GetService("TweenService")
+local RS = game:GetService("RunService")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local LP = Players.LocalPlayer
+local Mouse = LP:GetMouse()
 
--- [ Utility Functions ]
-local function MakeDraggable(obj)
-    local dragging, dragInput, dragStart, startPos
-    obj.InputBegan:Connect(function(input)
+-- [ نظام الواجهة المتطور ]
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "Mozer_Architect"
+ScreenGui.ResetOnSpawn = false
+
+-- إنشاء الإطار الرئيسي بنظام Modular
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 650, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -325, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+MainFrame.BorderSizePixel = 0
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+-- إضافة لمعان (Glow) خلفي
+local Shadow = Instance.new("ImageLabel", MainFrame)
+Shadow.Size = UDim2.new(1, 40, 1, 40)
+Shadow.Position = UDim2.new(0, -20, 0, -20)
+Shadow.BackgroundTransparency = 1
+Shadow.Image = "rbxassetid://1316045217" -- Shadow Asset
+Shadow.ImageColor3 = Color3.fromRGB(0, 255, 150)
+Shadow.ZIndex = 0
+
+-- [ نظام السحب المتطور للجوال ]
+local function MakeDraggable(UI)
+    local Dragging, DragInput, DragStart, StartPos
+    UI.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = obj.Position
+            Dragging = true; DragStart = input.Position; StartPos = UI.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then Dragging = false end end)
         end
     end)
-    obj.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
+    UI.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then DragInput = input end
     end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-    obj.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
+    UIS.InputChanged:Connect(function(input)
+        if input == DragInput and Dragging then
+            local Delta = input.Position - DragStart
+            UI.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
         end
     end)
 end
-
--- [ UI Construction - The Monster Frame ]
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 600, 0, 400)
-MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MainFrame.BorderSizePixel = 0
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 15)
 MakeDraggable(MainFrame)
 
--- Sidebar
+-- [ أجزاء الواجهة ]
 local Sidebar = Instance.new("Frame", MainFrame)
-Sidebar.Size = UDim2.new(0, 160, 1, 0)
-Sidebar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 15)
+Sidebar.Size = UDim2.new(0, 170, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+Instance.new("UICorner", Sidebar)
 
-local Title = Instance.new("TextLabel", Sidebar)
-Title.Size = UDim2.new(1, 0, 0, 50)
-Title.Text = "MOZER ADMIN"
-Title.Font = Enum.Font.FredokaOne
-Title.TextSize = 22
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.BackgroundTransparency = 1
+local ContentArea = Instance.new("Frame", MainFrame)
+ContentArea.Position = UDim2.new(0, 180, 0, 10)
+ContentArea.Size = UDim2.new(1, -190, 1, -20)
+ContentArea.BackgroundTransparency = 1
 
--- Pages Container
-local Container = Instance.new("Frame", MainFrame)
-Container.Position = UDim2.new(0, 170, 0, 10)
-Container.Size = UDim2.new(1, -180, 1, -20)
-Container.BackgroundTransparency = 1
+local TabContainer = Instance.new("ScrollingFrame", Sidebar)
+TabContainer.Size = UDim2.new(1, -10, 1, -100)
+TabContainer.Position = UDim2.new(0, 5, 0, 60)
+TabContainer.BackgroundTransparency = 1
+TabContainer.CanvasSize = UDim2.new(0, 0, 1.5, 0)
+TabContainer.ScrollBarThickness = 0
+Instance.new("UIListLayout", TabContainer).Padding = UDim.new(0, 5)
 
+-- [ وظائف إنشاء الأزرار والصفحات ]
 local Pages = {}
-local function CreatePage(name)
-    local Page = Instance.new("ScrollingFrame", Container)
+local function NewTab(name, icon)
+    local Page = Instance.new("ScrollingFrame", ContentArea)
     Page.Size = UDim2.new(1, 0, 1, 0)
-    Page.BackgroundTransparency = 1
     Page.Visible = false
-    Page.CanvasSize = UDim2.new(0, 0, 5, 0)
-    Page.ScrollBarThickness = 3
+    Page.BackgroundTransparency = 1
+    Page.CanvasSize = UDim2.new(0,0,3,0)
+    Page.ScrollBarThickness = 2
+    Instance.new("UIListLayout", Page).Padding = UDim.new(0, 8)
     
-    local UIList = Instance.new("UIListLayout", Page)
-    UIList.Padding = UDim.new(0, 10)
-    UIList.SortOrder = Enum.SortOrder.LayoutOrder
-    
-    local TabBtn = Instance.new("TextButton", Sidebar)
-    TabBtn.Size = UDim2.new(0.9, 0, 0, 40)
-    TabBtn.Position = UDim2.new(0.05, 0, 0, 60 + (#Sidebar:GetChildren()*45))
-    TabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    TabBtn.Text = name
-    TabBtn.TextColor3 = Color3.new(1,1,1)
-    TabBtn.Font = Enum.Font.GothamBold
+    local TabBtn = Instance.new("TextButton", TabContainer)
+    TabBtn.Size = UDim2.new(1, 0, 0, 38)
+    TabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    TabBtn.Text = "  " .. name
+    TabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    TabBtn.Font = Enum.Font.GothamMedium
+    TabBtn.TextXAlignment = Enum.TextXAlignment.Left
     Instance.new("UICorner", TabBtn)
     
     TabBtn.MouseButton1Click:Connect(function()
         for _, p in pairs(Pages) do p.Visible = false end
         Page.Visible = true
+        TS:Create(TabBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(0, 255, 150), TextColor3 = Color3.new(0,0,0)}):Play()
+        for _, btn in pairs(TabContainer:GetChildren()) do
+            if btn:IsA("TextButton") and btn ~= TabBtn then
+                TS:Create(btn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(25, 25, 30), TextColor3 = Color3.fromRGB(200, 200, 200)}):Play()
+            end
+        end
     end)
-    
     Pages[name] = Page
     return Page
 end
 
--- [ PAGE 1: ADMIN CONTROL ]
-local AdminPage = CreatePage("Admin Settings")
+-- [ الصفحات العملاقة ]
+local MainTab = NewTab("Control Center", "")
+local AnatomyTab = NewTab("Map Anatomy", "")
+local SpyTab = NewTab("Remote Engine", "")
+local VisualsTab = NewTab("World Visuals", "")
+local ToolTab = NewTab("Tool Laboratory", "")
 
-local function AddCounter(parent, title, default, step, callback)
-    local Frame = Instance.new("Frame", parent)
-    Frame.Size = UDim2.new(1, 0, 0, 60)
-    Frame.BackgroundTransparency = 1
+-----------------------------------------------------------
+-- [ 1. CONTROL CENTER: Advanced Movement ]
+-----------------------------------------------------------
+local function CreateSlider(parent, title, min, max, default, callback)
+    local SFrame = Instance.new("Frame", parent)
+    SFrame.Size = UDim2.new(1, 0, 0, 60)
+    SFrame.BackgroundTransparency = 1
     
-    local Label = Instance.new("TextLabel", Frame)
+    local Label = Instance.new("TextLabel", SFrame)
     Label.Size = UDim2.new(1, 0, 0, 20)
     Label.Text = title .. ": " .. default
     Label.TextColor3 = Color3.new(1,1,1)
     Label.BackgroundTransparency = 1
+    Label.Font = Enum.Font.GothamBold
+
+    local SliderBack = Instance.new("Frame", SFrame)
+    SliderBack.Size = UDim2.new(0.9, 0, 0, 10)
+    SliderBack.Position = UDim2.new(0.05, 0, 0, 35)
+    SliderBack.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
     
-    local Plus = Instance.new("TextButton", Frame)
-    Plus.Size = UDim2.new(0.3, 0, 0, 30)
-    Plus.Position = UDim2.new(0.6, 0, 0, 25)
-    Plus.Text = "+" .. step
-    Plus.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
-    Plus.TextColor3 = Color3.new(1,1,1)
-    Instance.new("UICorner", Plus)
+    local SliderMain = Instance.new("Frame", SliderBack)
+    SliderMain.Size = UDim2.new((default-min)/(max-min), 0, 1, 0)
+    SliderMain.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
     
-    local Minus = Instance.new("TextButton", Frame)
-    Minus.Size = UDim2.new(0.3, 0, 0, 30)
-    Minus.Position = UDim2.new(0.1, 0, 0, 25)
-    Minus.Text = "-" .. step
-    Minus.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
-    Minus.TextColor3 = Color3.new(1,1,1)
-    Instance.new("UICorner", Minus)
-    
-    local val = default
-    Plus.MouseButton1Click:Connect(function() val = val + step Label.Text = title .. ": " .. val callback(val) end)
-    Minus.MouseButton1Click:Connect(function() val = math.max(0, val - step) Label.Text = title .. ": " .. val callback(val) end)
-end
-
-AddCounter(AdminPage, "WalkSpeed", 16, 10, function(v) LocalPlayer.Character.Humanoid.WalkSpeed = v end)
-
--- Fly Toggle
-local flyOn = false
-local flySpeed = 50
-local FlyBtn = Instance.new("TextButton", AdminPage)
-FlyBtn.Size = UDim2.new(1, 0, 0, 40)
-FlyBtn.Text = "Fly: OFF"
-FlyBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-FlyBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", FlyBtn)
-
-FlyBtn.MouseButton1Click:Connect(function()
-    flyOn = not flyOn
-    FlyBtn.Text = "Fly: " .. (flyOn and "ON" or "OFF")
-    FlyBtn.BackgroundColor3 = flyOn and Color3.fromRGB(0, 100, 200) or Color3.fromRGB(50, 50, 50)
-end)
-
-AddCounter(AdminPage, "Fly Speed", 50, 5, function(v) flySpeed = v end)
-
--- [ PAGE 2: PATH SPY (THE BEAST) ]
-local SpyPage = CreatePage("Path Spy")
-local SpyActive = false
-local SpyLogs = {}
-
-local SpyControls = Instance.new("Frame", SpyPage)
-SpyControls.Size = UDim2.new(1, 0, 0, 80)
-SpyControls.BackgroundTransparency = 1
-
-local StartSpy = Instance.new("TextButton", SpyControls)
-StartSpy.Size = UDim2.new(0.45, 0, 0, 35)
-StartSpy.Text = "Monitor ON/OFF"
-StartSpy.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-StartSpy.TextColor3 = Color3.new(1,1,1)
-
-StartSpy.MouseButton1Click:Connect(function()
-    SpyActive = not SpyActive
-    StartSpy.BackgroundColor3 = SpyActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 40)
-end)
-
-local LogContainer = Instance.new("Frame", SpyPage)
-LogContainer.Size = UDim2.new(1, 0, 0, 1000)
-LogContainer.Position = UDim2.new(0, 0, 0, 90)
-LogContainer.BackgroundTransparency = 1
-Instance.new("UIListLayout", LogContainer).Padding = UDim.new(0, 5)
-
-local function AddSpyLog(path, type)
-    if not SpyActive then return end
-    if SpyLogs[path] then
-        SpyLogs[path].Count = SpyLogs[path].Count + 1
-        SpyLogs[path].UI.CountLabel.Text = "x" .. SpyLogs[path].Count
-        return
-    end
-    
-    local LogFrame = Instance.new("Frame", LogContainer)
-    LogFrame.Size = UDim2.new(1, 0, 0, 40)
-    LogFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    
-    local PathTxt = Instance.new("TextBox", LogFrame)
-    PathTxt.Size = UDim2.new(0.7, 0, 1, 0)
-    PathTxt.Text = "[" .. type .. "] " .. path
-    PathTxt.ClearTextOnFocus = false
-    PathTxt.TextColor3 = Color3.new(1,1,1)
-    PathTxt.TextSize = 10
-    PathTxt.BackgroundTransparency = 1
-    PathTxt.TextXAlignment = Enum.TextXAlignment.Left
-
-    local CopyBtn = Instance.new("TextButton", LogFrame)
-    CopyBtn.Size = UDim2.new(0.15, 0, 0.8, 0)
-    CopyBtn.Position = UDim2.new(0.7, 5, 0.1, 0)
-    CopyBtn.Text = "Copy"
-    CopyBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    
-    local CountLabel = Instance.new("TextLabel", LogFrame)
-    CountLabel.Size = UDim2.new(0.1, 0, 1, 0)
-    CountLabel.Position = UDim2.new(0.85, 5, 0, 0)
-    CountLabel.Text = "x1"
-    CountLabel.TextColor3 = Color3.new(0, 1, 0)
-    CountLabel.BackgroundTransparency = 1
-
-    CopyBtn.MouseButton1Click:Connect(function() setclipboard(path) end)
-    
-    SpyLogs[path] = {Count = 1, UI = {CountLabel = CountLabel}}
-end
-
--- Hooking Engine
-local oldNC
-oldNC = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    if SpyActive and (method == "FireServer" or method == "InvokeServer") then
-        AddSpyLog(self:GetFullName(), "REMOTE")
-    end
-    return oldNC(self, ...)
-end)
-
--- [ PAGE 3: TOOL MOP (ANATOMY) ]
-local MopPage = CreatePage("Tool Mop")
-local SelectedObject = nil
-
-local MopInfo = Instance.new("TextBox", MopPage)
-MopInfo.Size = UDim2.new(1, 0, 0, 120)
-MopInfo.MultiLine = true
-MopInfo.Text = "Select an object to analyze..."
-MopInfo.BackgroundColor3 = Color3.new(0,0,0)
-MopInfo.TextColor3 = Color3.new(0, 1, 0)
-MopInfo.ClearTextOnFocus = false
-
-local PickBtn = Instance.new("TextButton", MopPage)
-PickBtn.Size = UDim2.new(1, 0, 0, 40)
-PickBtn.Text = "CLICK TO SELECT (MODEL)"
-PickBtn.BackgroundColor3 = Color3.fromRGB(0, 80, 150)
-
-PickBtn.MouseButton1Click:Connect(function()
-    local conn
-    conn = UserInputService.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            -- UI Protection
-            if UserInputService:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)[1] == nil or 
-               not UserInputService:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)[1]:IsDescendantOf(ScreenGui) then
-                
-                local ray = workspace.CurrentCamera:ViewportPointToRay(input.Position.X, input.Position.Y)
-                local hit = workspace:FindPartOnRay(ray)
-                if hit then
-                    SelectedObject = hit:FindFirstAncestorOfClass("Model") or hit
-                    MopInfo.Text = "NAME: "..SelectedObject.Name.."\nPATH: "..SelectedObject:GetFullName().."\nCLASS: "..SelectedObject.ClassName
-                    
-                    -- Highlight
-                    local h = Instance.new("Highlight", SelectedObject)
-                    h.FillColor = Color3.new(1, 0, 0)
-                    task.wait(2)
-                    h:Destroy()
-                end
+    -- نظام تحكم السلايدر للجوال
+    SliderBack.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local function Update()
+                local Pos = math.clamp((input.Position.X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X, 0, 1)
+                SliderMain.Size = UDim2.new(Pos, 0, 1, 0)
+                local Val = math.floor(min + (Pos * (max-min)))
+                Label.Text = title .. ": " .. Val
+                callback(Val)
             end
-            conn:Disconnect()
+            Update()
+            local Move = UIS.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then Update() end
+            end)
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then Move:Disconnect() end end)
+        end
+    end)
+end
+
+CreateSlider(MainTab, "Hyper Speed", 16, 1000, 16, function(v) LP.Character.Humanoid.WalkSpeed = v end)
+CreateSlider(MainTab, "Jump Power", 50, 1000, 50, function(v) LP.Character.Humanoid.JumpPower = v; LP.Character.Humanoid.UseJumpPower = true end)
+
+-----------------------------------------------------------
+-- [ 2. MAP ANATOMY: The Surgeon ]
+-----------------------------------------------------------
+local AnatomyLog = Instance.new("TextBox", AnatomyTab)
+AnatomyLog.Size = UDim2.new(1, 0, 0, 180)
+AnatomyLog.MultiLine = true
+AnatomyLog.Text = "--- Anatomy Report ---\nSelect an object to deconstruct..."
+AnatomyLog.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+AnatomyLog.TextColor3 = Color3.fromRGB(0, 255, 150)
+AnatomyLog.Font = Enum.Font.Code
+AnatomyLog.ClearTextOnFocus = false
+AnatomyLog.TextXAlignment = Enum.TextXAlignment.Left
+
+local SelectBtn = Instance.new("TextButton", AnatomyTab)
+SelectBtn.Size = UDim2.new(1, 0, 0, 45)
+SelectBtn.Text = "🔬 START SURGERY (Click Any Part)"
+SelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+SelectBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", SelectBtn)
+
+SelectBtn.MouseButton1Click:Connect(function()
+    SelectBtn.Text = "WAITING FOR CLICK..."
+    local Conn; Conn = UIS.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if not UIS:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)[1] then
+                local Ray = workspace.CurrentCamera:ViewportPointToRay(input.Position.X, input.Position.Y)
+                local Hit = workspace:FindPartOnRay(Ray)
+                if Hit then
+                    local Target = Hit:FindFirstAncestorOfClass("Model") or Hit
+                    MozerHub.SelectedObject = Target
+                    local Data = "OBJECT: " .. Target.Name .. "\n"
+                    Data = Data .. "CLASS: " .. Target.ClassName .. "\n"
+                    Data = Data .. "PATH: " .. Target:GetFullName() .. "\n"
+                    Data = Data .. "SIZE: " .. tostring(Target:GetExtentsSize()) .. "\n"
+                    if Target:IsA("MeshPart") then Data = Data .. "MESH ID: " .. Target.MeshId end
+                    AnatomyLog.Text = Data
+                    
+                    -- Highlight Effect
+                    local High = Instance.new("Highlight", Target)
+                    High.FillColor = Color3.fromRGB(0, 255, 150)
+                    task.wait(1); High:Destroy()
+                end
+                SelectBtn.Text = "🔬 START SURGERY (Click Any Part)"
+                Conn:Disconnect()
+            end
         end
     end)
 end)
 
-local TeleportBtn = Instance.new("TextButton", MopPage)
-TeleportBtn.Size = UDim2.new(1, 0, 0, 40)
-TeleportBtn.Text = "Teleport to Similar Objects"
-TeleportBtn.BackgroundColor3 = Color3.fromRGB(80, 0, 150)
+-----------------------------------------------------------
+-- [ 3. REMOTE ENGINE: Deep Interceptor ]
+-----------------------------------------------------------
+local SpyBox = Instance.new("ScrollingFrame", SpyTab)
+SpyBox.Size = UDim2.new(1, 0, 0, 250)
+SpyBox.BackgroundColor3 = Color3.fromRGB(5, 5, 8)
+Instance.new("UIListLayout", SpyBox)
 
-TeleportBtn.MouseButton1Click:Connect(function()
-    if SelectedObject then
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj.Name == SelectedObject.Name and obj ~= SelectedObject then
-                LocalPlayer.Character:MoveTo(obj:GetPivot().Position)
-                break
+local function LogRemote(remote, args)
+    local Frame = Instance.new("Frame", SpyBox)
+    Frame.Size = UDim2.new(1, 0, 0, 35)
+    Frame.BackgroundTransparency = 1
+    
+    local Txt = Instance.new("TextBox", Frame)
+    Txt.Size = UDim2.new(0.8, 0, 1, 0)
+    Txt.Text = "Remote: " .. remote.Name .. " | Args: " .. #args
+    Txt.TextColor3 = Color3.new(1,1,1)
+    Txt.BackgroundTransparency = 1
+    Txt.ClearTextOnFocus = false
+    
+    local FireBtn = Instance.new("TextButton", Frame)
+    FireBtn.Size = UDim2.new(0.2, 0, 1, 0)
+    FireBtn.Position = UDim2.new(0.8, 0, 0, 0)
+    FireBtn.Text = "RE-FIRE"
+    FireBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 0)
+    
+    FireBtn.MouseButton1Click:Connect(function()
+        if remote:IsA("RemoteEvent") then remote:FireServer(unpack(args))
+        elseif remote:IsA("RemoteFunction") then remote:InvokeServer(unpack(args)) end
+    end)
+end
+
+-- Metatable Hooking (The Core)
+local OldNC
+OldNC = hookmetamethod(game, "__namecall", function(self, ...)
+    local Method = getnamecallmethod()
+    local Args = {...}
+    if MozerHub.SpyActive and (Method == "FireServer" or Method == "InvokeServer") then
+        LogRemote(self, Args)
+    end
+    return OldNC(self, ...)
+end)
+
+local SpyToggle = Instance.new("TextButton", SpyTab)
+SpyToggle.Size = UDim2.new(1, 0, 0, 45)
+SpyToggle.Text = "REMOTE SPY: OFF"
+SpyToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SpyToggle.MouseButton1Click:Connect(function()
+    MozerHub.SpyActive = not MozerHub.SpyActive
+    SpyToggle.Text = "REMOTE SPY: " .. (MozerHub.SpyActive and "ON" or "OFF")
+    SpyToggle.BackgroundColor3 = MozerHub.SpyActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 40)
+end)
+
+-----------------------------------------------------------
+-- [ 4. WORLD VISUALS: X-RAY & DEBUG ]
+-----------------------------------------------------------
+local XrayBtn = Instance.new("TextButton", VisualsTab)
+XrayBtn.Size = UDim2.new(1, 0, 0, 45)
+XrayBtn.Text = "X-RAY VISION: OFF"
+XrayBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+
+XrayBtn.MouseButton1Click:Connect(function()
+    MozerHub.XrayActive = not MozerHub.XrayActive
+    XrayBtn.Text = "X-RAY VISION: " .. (MozerHub.XrayActive and "ON" or "OFF")
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and not obj:IsDescendantOf(LP.Character) then
+            if MozerHub.XrayActive then
+                if obj.Transparency < 0.5 then obj.Transparency = 0.5 end
+            else
+                obj.Transparency = 0
             end
         end
     end
 end)
 
--- [ PAGE 4: ITEM & TOOL INFO ]
-local ItemPage = CreatePage("Item & Tool")
-local ItemDetails = Instance.new("TextBox", ItemPage)
-ItemDetails.Size = UDim2.new(1, 0, 0, 200)
-ItemDetails.MultiLine = true
-ItemDetails.BackgroundColor3 = Color3.new(0,0,0)
-ItemDetails.TextColor3 = Color3.new(1, 0.8, 0)
-
-local ScanItemBtn = Instance.new("TextButton", ItemPage)
-ScanItemBtn.Size = UDim2.new(1, 0, 0, 40)
-ScanItemBtn.Text = "Scan Held Item"
-ScanItemBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 0)
-
-ScanItemBtn.MouseButton1Click:Connect(function()
-    local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-    if tool then
-        local data = "Tool Name: "..tool.Name.."\n"
-        data = data .. "Path: "..tool:GetFullName().."\n"
-        for _, child in pairs(tool:GetDescendants()) do
-            if child:IsA("RemoteEvent") then
-                data = data .. "[RemoteFound]: "..child.Name.."\n"
-            elseif child:IsA("Script") or child:IsA("LocalScript") then
-                data = data .. "[ScriptFound]: "..child.Name.." (Size: "..#child:GetFullName()..")\n"
-            end
-        end
-        ItemDetails.Text = data
-    else
-        ItemDetails.Text = "Equip an item first!"
-    end
+local FullBright = Instance.new("TextButton", VisualsTab)
+FullBright.Size = UDim2.new(1, 0, 0, 45)
+FullBright.Text = "REMOVE FOG & NIGHT"
+FullBright.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+FullBright.MouseButton1Click:Connect(function()
+    game.Lighting.Brightness = 2
+    game.Lighting.ClockTime = 14
+    game.Lighting.FogEnd = 100000
+    game.Lighting.GlobalShadows = false
 end)
 
--- [ Close / Open System ]
+-----------------------------------------------------------
+-- [ نظام التصغير والدخول ]
+-----------------------------------------------------------
+local MiniBtn = Instance.new("TextButton", ScreenGui)
+MiniBtn.Size = UDim2.new(0, 60, 0, 60)
+MiniBtn.Position = UDim2.new(0, 10, 0.4, 0)
+MiniBtn.Text = "MOZER"
+MiniBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
+MiniBtn.TextColor3 = Color3.fromRGB(0,0,0)
+MiniBtn.Font = Enum.Font.FredokaOne
+MiniBtn.Visible = false
+Instance.new("UICorner", MiniBtn).CornerRadius = UDim.new(1, 0)
+MakeDraggable(MiniBtn)
+
 local CloseBtn = Instance.new("TextButton", MainFrame)
 CloseBtn.Size = UDim2.new(0, 30, 0, 30)
 CloseBtn.Position = UDim2.new(1, -35, 0, 5)
 CloseBtn.Text = "X"
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
 CloseBtn.TextColor3 = Color3.new(1,1,1)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false; MiniBtn.Visible = true end)
+MiniBtn.MouseButton1Click:Connect(function() MainFrame.Visible = true; MiniBtn.Visible = false end)
 
-local MinBtn = Instance.new("TextButton", ScreenGui)
-MinBtn.Size = UDim2.new(0, 60, 0, 60)
-MinBtn.Position = UDim2.new(0, 10, 0.5, 0)
-MinBtn.Text = "MOZER"
-MinBtn.Visible = false
-MinBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MinBtn.TextColor3 = Color3.new(0, 1, 0)
-Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(1, 0)
-MakeDraggable(MinBtn)
+-- [ الترحيب والتشغيل ]
+local WelcomeFrame = Instance.new("Frame", ScreenGui)
+WelcomeFrame.Size = UDim2.new(1, 0, 1, 0)
+WelcomeFrame.BackgroundColor3 = Color3.new(0,0,0)
+WelcomeFrame.ZIndex = 100
 
-CloseBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-    MinBtn.Visible = true
-end)
+local WelcText = Instance.new("TextLabel", WelcomeFrame)
+WelcText.Size = UDim2.new(1, 0, 1, 0)
+WelcText.Text = "MOZER ARCHITECT V3\nInitializing Systems..."
+WelcText.Font = Enum.Font.FredokaOne
+WelcText.TextSize = 40
+WelcText.TextColor3 = Color3.fromRGB(0, 255, 150)
 
-MinBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = true
-    MinBtn.Visible = false
-end)
+task.wait(1.5)
+TS:Create(WelcomeFrame, TweenInfo.new(1), {BackgroundTransparency = 1}):Play()
+TS:Create(WelcText, TweenInfo.new(1), {TextTransparency = 1}):Play()
+task.wait(1)
+WelcomeFrame:Destroy()
 
--- Fly Logic
-RunService.Stepped:Connect(function()
-    if flyOn and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local root = LocalPlayer.Character.HumanoidRootPart
-        root.Velocity = Vector3.new(0, 0.1, 0)
-        
-        -- Basic Mobile Fly
-        local cam = workspace.CurrentCamera
-        local moveDir = LocalPlayer.Character.Humanoid.MoveDirection
-        root.CFrame = root.CFrame + (moveDir * flySpeed/10)
-    end
-end)
-
--- [ Welcome Message ]
-print("MOZER ADMIN V2 LOADED SUCCESSFULLY")
+print("MOZER V3: SYSTEM ONLINE")
